@@ -1,0 +1,237 @@
+{
+  "name": "PM Skills — Strategy",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pm-strategy",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "pm-strategy"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body;\nconst skill = body.skill;\nconst inputs = body.inputs || {};\n\nconst skills = {\n\n  'roadmap-builder': {\n    system: `You are an expert product strategist. Create structured, actionable product roadmaps. Output in clean markdown with these sections: ## Executive Summary, ## Goals & Success Metrics, ## Roadmap by Quarter (or relevant timeframes), ## Key Risks & Dependencies, ## Open Questions. Be specific — include initiative names, not vague themes.`,\n    user: `Build a product roadmap with the following context:\n\nGoals: ${inputs.goals || ''}\nConstraints: ${inputs.constraints || ''}\nPriorities: ${inputs.priorities || ''}\nTimeframe: ${inputs.timeframe || '12 months'}\nTeam size: ${inputs.team_size || 'not specified'}\n\nOutput a complete, structured roadmap ready to share with stakeholders.`\n  },\n\n  'go-to-market': {\n    system: `You are an expert go-to-market strategist. Create comprehensive GTM plans with channels, messaging, timeline, and success metrics. Output in clean markdown. Be specific about channel tactics, not generic advice.`,\n    user: `Create a go-to-market strategy:\n\nProduct: ${inputs.product || ''}\nTarget Market: ${inputs.target_market || ''}\nLaunch Date: ${inputs.launch_date || ''}\nBudget: ${inputs.budget || 'not specified'}\nKey Differentiators: ${inputs.differentiators || ''}\nCurrent stage: ${inputs.stage || 'pre-launch'}\n\nOutput: positioning, channels with specific tactics, messaging framework, 90-day timeline, and success metrics.`\n  },\n\n  'bcg-matrix': {\n    system: `You are an expert in portfolio strategy. Analyze products using the BCG Growth-Share Matrix. For each product give: quadrant placement with reasoning, strategic recommendation (invest/milk/divest/nurture), specific actions, and resource implications. End with portfolio-level strategic recommendations.`,\n    user: `Analyze this product portfolio using the BCG Matrix:\n\n${inputs.products ? JSON.stringify(inputs.products, null, 2) : inputs.context || ''}\n\nFor each product include: market growth rate assessment, relative market share assessment, quadrant placement, and specific strategic actions. Close with overall portfolio health and rebalancing recommendations.`\n  },\n\n  'swot-analysis': {\n    system: `You are an expert strategic analyst. Create comprehensive SWOT analyses that go beyond listing — connect the quadrants and recommend concrete SO (use strengths to capture opportunities), WO (fix weaknesses to capture opportunities), ST (use strengths to counter threats), and WT (minimize weaknesses, avoid threats) strategies. Output in clean markdown.`,\n    user: `Create a SWOT analysis:\n\nCompany/Product: ${inputs.company || inputs.product || ''}\nIndustry: ${inputs.industry || ''}\nContext: ${inputs.context || ''}\nKey question to answer: ${inputs.question || 'What should our strategic priorities be?'}\n\nOutput: full four-quadrant SWOT, cross-quadrant strategic implications, and top 3 recommended actions with rationale.`\n  },\n\n  'pricing-strategy': {\n    system: `You are an expert in SaaS and product pricing strategy. Analyze pricing with competitive positioning, packaging options, and revenue modeling. Give specific recommendations with numbers, not ranges. Output in clean markdown.`,\n    user: `Analyze pricing strategy:\n\nProduct: ${inputs.product || ''}\nCurrent Pricing: ${inputs.current_pricing || 'not set'}\nCompetitors and their pricing: ${inputs.competitors || ''}\nTarget Segment: ${inputs.target_segment || ''}\nBusiness Model: ${inputs.business_model || 'SaaS'}\nAnnual Revenue Target: ${inputs.revenue_target || 'not specified'}\n\nOutput: pricing model recommendation, packaging tiers (name, price, what's included), competitive positioning, and a simple revenue projection at each tier.`\n  },\n\n  'market-sizing': {\n    system: `You are an expert in market research and sizing. Calculate TAM/SAM/SOM using both top-down and bottom-up approaches. Show your math step by step. State every assumption explicitly. Flag confidence level (high/medium/low) for each number.`,\n    user: `Calculate market size:\n\nMarket: ${inputs.market || ''}\nGeography: ${inputs.geography || 'Global'}\nTarget customer: ${inputs.target_customer || ''}\nAdditional context: ${inputs.context || ''}\n\nOutput: TAM, SAM, SOM for both top-down and bottom-up approaches with full calculations, explicit assumptions, confidence levels, and a recommended number to use for planning.`\n  },\n\n  'competitive-landscape': {\n    system: `You are an expert in competitive analysis. Map competitive landscapes clearly. For each competitor: what they do, who they target, how they position, their strengths and weaknesses, and their likely strategic moves. End with white space opportunities and strategic recommendations. Use text-based tables and positioning maps where helpful.`,\n    user: `Map the competitive landscape:\n\nOur Product: ${inputs.product || ''}\nOur target customer: ${inputs.target_customer || ''}\nCompetitors to analyze: ${inputs.competitors || ''}\nKey dimensions to evaluate: ${inputs.dimensions || 'price, features, ease of use, market focus'}\nMarket context: ${inputs.market || ''}\n\nOutput: competitor profiles table, text-based positioning matrix, white space opportunities, and top 3 strategic recommendations.`\n  }\n\n};\n\nconst skill_config = skills[skill];\nif (!skill_config) {\n  throw new Error(`Unknown skill: \"${skill}\". Valid options: ${Object.keys(skills).join(', ')}`);\n}\n\nreturn {\n  skill: skill,\n  system_prompt: skill_config.system,\n  user_message: skill_config.user\n};"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000002",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({\"model\":\"claude-sonnet-4-6\",\"max_tokens\":8192,\"system\":$json.system_prompt,\"messages\":[{\"role\":\"user\",\"content\":$json.user_message}]}) }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000003",
+      "name": "Claude",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_ANTHROPIC_CREDENTIAL_ID",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.item.json;\nconst content = raw.content && raw.content[0] ? raw.content[0].text : '';\nconst skill = $('Build Prompt').item.json.skill;\n\nreturn {\n  skill: skill,\n  content: content,\n  word_count: content.split(/\\s+/).filter(w => w).length,\n  generated_at: new Date().toISOString()\n};"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000004",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_NOTION_PM_SKILLS_DB_ID"
+        },
+        "title": "={{ $json.skill + ' — ' + $now.toFormat('yyyy-MM-dd') }}",
+        "propertiesUi": {
+          "propertyValues": []
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000005",
+      "name": "Create Notion page",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [1080, 300],
+      "credentials": {
+        "notionApi": {
+          "id": "YOUR_NOTION_CREDENTIAL_ID",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "block",
+        "blockId": {
+          "__rl": true,
+          "value": "={{ $('Create Notion page').item.json.id }}",
+          "mode": "id"
+        },
+        "blockUi": {
+          "blockValues": [
+            {
+              "textContent": "={{ $('Parse Response').item.json.content.substring(0, 2000) }}"
+            },
+            {
+              "textContent": "={{ $('Parse Response').item.json.content.length > 2000 ? $('Parse Response').item.json.content.substring(2000, 4000) : ' ' }}"
+            },
+            {
+              "textContent": "={{ $('Parse Response').item.json.content.length > 4000 ? $('Parse Response').item.json.content.substring(4000, 6000) : ' ' }}"
+            },
+            {
+              "textContent": "={{ $('Parse Response').item.json.content.length > 6000 ? $('Parse Response').item.json.content.substring(6000, 8000) : ' ' }}"
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000006",
+      "name": "Append content blocks",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [1300, 300],
+      "credentials": {
+        "notionApi": {
+          "id": "YOUR_NOTION_CREDENTIAL_ID",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'done', skill: $('Parse Response').item.json.skill, notion_url: $('Create Notion page').item.json.url, word_count: $('Parse Response').item.json.word_count, generated_at: $('Parse Response').item.json.generated_at }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000007",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1520, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "Claude",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude": {
+      "main": [
+        [
+          {
+            "node": "Parse Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Response": {
+      "main": [
+        [
+          {
+            "node": "Create Notion page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Notion page": {
+      "main": [
+        [
+          {
+            "node": "Append content blocks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append content blocks": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
