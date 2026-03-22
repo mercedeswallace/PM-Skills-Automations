@@ -1,0 +1,125 @@
+{
+  "name": "PM Skills — Product & Customer",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pm-product",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e5f6a7b8-0005-0005-0005-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "pm-product"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body;\nconst skill = body.skill;\nconst inputs = body.inputs || {};\n\nconst skills = {\n\n  'positioning': {\n    system: `You are an expert in product positioning using April Dunford's Obviously Awesome framework. Create positioning that is specific, differentiated, and resonates with the target customer. Avoid generic positioning. Output in clean markdown.`,\n    user: `Create a positioning statement:\n\nProduct: ${inputs.product || ''}\nCompetitive alternatives (what customers do today without you): ${inputs.alternatives || ''}\nUnique attributes (what you have that alternatives don't): ${inputs.attributes || ''}\nCustomer value (what benefit those attributes unlock): ${inputs.value || ''}\nTarget customer: ${inputs.target || ''}\nMarket frame of reference: ${inputs.market || ''}\n\nOutput: April Dunford positioning canvas (filled out), one-sentence positioning statement, messaging hierarchy (headline, sub-headline, 3 proof points), and what NOT to say (positioning anti-patterns to avoid).`\n  },\n\n  'value-prop': {\n    system: `You are an expert in value proposition design using the Value Proposition Canvas. Map customer jobs, pains, and gains to product features, pain relievers, and gain creators. Be specific — avoid generic claims. Output in clean markdown.`,\n    user: `Create a Value Proposition Canvas:\n\nProduct: ${inputs.product || ''}\nTarget customer segment: ${inputs.segment || ''}\nCustomer jobs (functional, social, emotional): ${inputs.jobs || ''}\nCustomer pains: ${inputs.pains || ''}\nCustomer gains desired: ${inputs.gains || ''}\nKey product features: ${inputs.features || ''}\n\nOutput: completed Value Proposition Canvas, fit assessment (which pains/gains are addressed), top 3 value propositions ranked by customer impact, and gaps to address.`\n  },\n\n  'build-vs-buy': {\n    system: `You are an expert in product and engineering strategy. Analyze build vs buy decisions rigorously — including total cost of ownership, strategic fit, time to market, and risk. Give a clear recommendation with trade-offs. Output in clean markdown.`,\n    user: `Analyze this build vs buy decision:\n\nCapability needed: ${inputs.capability || ''}\nBuild option: ${inputs.build_option || ''}\nBuy/vendor options: ${inputs.buy_options || ''}\nStrategic context: ${inputs.context || ''}\nTeam capacity: ${inputs.capacity || ''}\nBudget: ${inputs.budget || ''}\nTimeline: ${inputs.timeline || ''}\n\nOutput: decision criteria matrix, build analysis (cost, time, risk, strategic value), buy analysis per vendor, total cost of ownership comparison, recommendation with rationale, and implementation plan for the recommended path.`\n  },\n\n  'feature-requests': {\n    system: `You are an expert product manager. Turn scattered feature requests into a prioritized, insight-rich analysis. Find patterns across requests, infer underlying needs, and connect to strategic priorities. Output in clean markdown with structured tables.`,\n    user: `Analyze these feature requests:\n\nProduct: ${inputs.product || ''}\nRequests: ${inputs.requests || ''}\nStrategic priorities: ${inputs.priorities || ''}\nCustomer segments making requests: ${inputs.segments || 'not specified'}\n\nOutput: theme clustering table, underlying need analysis (what customers actually want vs what they asked for), prioritized list with RICE-style scoring, quick wins, requests to decline with rationale, and recommended roadmap additions.`\n  },\n\n  'product-brief': {\n    system: `You are an expert product manager. Write concise, compelling product briefs that get stakeholder buy-in before full spec investment. Every brief should answer: what, why, who, how we'll know it worked. Output in clean markdown, max 1 page equivalent.`,\n    user: `Write a product brief:\n\nFeature/initiative: ${inputs.feature || ''}\nProblem to solve: ${inputs.problem || ''}\nTarget user: ${inputs.user || ''}\nProposed solution: ${inputs.solution || ''}\nSuccess metrics: ${inputs.metrics || ''}\nScope constraints: ${inputs.constraints || ''}\nStakeholders: ${inputs.stakeholders || ''}\n\nOutput: one-page brief with problem statement, proposed solution, target user, success metrics, scope (in/out), open questions, and recommended next step.`\n  },\n\n  'onboarding-flow': {\n    system: `You are an expert in product-led growth and user onboarding. Design onboarding flows that guide users to their first value moment quickly without being annoying. Focus on behavior change, not feature tours. Output in clean markdown with step-by-step flow design.`,\n    user: `Design an onboarding flow:\n\nProduct: ${inputs.product || ''}\nTarget user: ${inputs.user || ''}\nFirst value moment (aha moment): ${inputs.aha_moment || ''}\nCurrent onboarding (if any): ${inputs.current || 'none'}\nMain drop-off points: ${inputs.drop_offs || 'unknown'}\nKey actions to drive: ${inputs.key_actions || ''}\n\nOutput: onboarding flow map (step by step), copy for each touchpoint (empty state, tooltips, emails), success metrics, common failure modes and fixes, and A/B test ideas.`\n  },\n\n  'cs-playbook': {\n    system: `You are an expert in customer success strategy. Create CS playbooks with specific plays for each stage of the customer lifecycle. Include triggers, actions, templates, and success metrics per play. Output in clean markdown.`,\n    user: `Create a customer success playbook:\n\nProduct: ${inputs.product || ''}\nCustomer segment: ${inputs.segment || ''}\nKey lifecycle stages: ${inputs.stages || 'onboarding, adoption, renewal, expansion'}\nCommon failure points: ${inputs.failure_points || ''}\nCurrent CS team size: ${inputs.team_size || 'not specified'}\nRenewal rate target: ${inputs.renewal_target || 'not specified'}\n\nOutput: playbook overview, one play per lifecycle stage (trigger, goal, actions, email templates, success metric), escalation playbook, and health score framework.`\n  },\n\n  'survey-generator': {\n    system: `You are an expert in customer research and survey design. Design surveys with clear objectives, unbiased questions, and analysis plans. Avoid leading questions, double-barreled questions, and survey fatigue. Output in clean markdown.`,\n    user: `Design a customer survey:\n\nResearch objective: ${inputs.objective || ''}\nTarget respondents: ${inputs.respondents || ''}\nKey questions to answer: ${inputs.questions || ''}\nSurvey channel: ${inputs.channel || 'email'}\nMax length: ${inputs.max_length || '5 minutes'}\n\nOutput: survey objective statement, screener questions (if needed), full question list with answer options and question type, survey flow logic, analysis plan (how to interpret results), and recommended follow-up actions based on common answer patterns.`\n  }\n\n};\n\nconst skill_config = skills[skill];\nif (!skill_config) {\n  throw new Error(`Unknown skill: \"${skill}\". Valid options: ${Object.keys(skills).join(', ')}`);\n}\n\nreturn {\n  skill: skill,\n  system_prompt: skill_config.system,\n  user_message: skill_config.user\n};"
+      },
+      "id": "e5f6a7b8-0005-0005-0005-000000000002",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({\"model\":\"claude-sonnet-4-6\",\"max_tokens\":8192,\"system\":$json.system_prompt,\"messages\":[{\"role\":\"user\",\"content\":$json.user_message}]}) }}",
+        "options": {}
+      },
+      "id": "e5f6a7b8-0005-0005-0005-000000000003",
+      "name": "Claude",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300],
+      "credentials": { "httpHeaderAuth": { "id": "YOUR_ANTHROPIC_CREDENTIAL_ID", "name": "Header Auth account" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.item.json;\nconst content = raw.content && raw.content[0] ? raw.content[0].text : '';\nconst skill = $('Build Prompt').item.json.skill;\nreturn {\n  skill: skill,\n  content: content,\n  word_count: content.split(/\\s+/).filter(w => w).length,\n  generated_at: new Date().toISOString()\n};"
+      },
+      "id": "e5f6a7b8-0005-0005-0005-000000000004",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": { "__rl": true, "mode": "id", "value": "YOUR_NOTION_PM_SKILLS_DB_ID" },
+        "title": "={{ $json.skill + ' — ' + $now.toFormat('yyyy-MM-dd') }}",
+        "propertiesUi": { "propertyValues": [] },
+        "options": {}
+      },
+      "id": "e5f6a7b8-0005-0005-0005-000000000005",
+      "name": "Create Notion page",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [1080, 300],
+      "credentials": { "notionApi": { "id": "YOUR_NOTION_CREDENTIAL_ID", "name": "Notion account" } }
+    },
+    {
+      "parameters": {
+        "resource": "block",
+        "blockId": { "__rl": true, "value": "={{ $('Create Notion page').item.json.id }}", "mode": "id" },
+        "blockUi": {
+          "blockValues": [
+            { "textContent": "={{ $('Parse Response').item.json.content.substring(0, 2000) }}" },
+            { "textContent": "={{ $('Parse Response').item.json.content.length > 2000 ? $('Parse Response').item.json.content.substring(2000, 4000) : ' ' }}" },
+            { "textContent": "={{ $('Parse Response').item.json.content.length > 4000 ? $('Parse Response').item.json.content.substring(4000, 6000) : ' ' }}" },
+            { "textContent": "={{ $('Parse Response').item.json.content.length > 6000 ? $('Parse Response').item.json.content.substring(6000, 8000) : ' ' }}" }
+          ]
+        }
+      },
+      "id": "e5f6a7b8-0005-0005-0005-000000000006",
+      "name": "Append content blocks",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [1300, 300],
+      "credentials": { "notionApi": { "id": "YOUR_NOTION_CREDENTIAL_ID", "name": "Notion account" } }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'done', skill: $('Parse Response').item.json.skill, notion_url: $('Create Notion page').item.json.url, word_count: $('Parse Response').item.json.word_count, generated_at: $('Parse Response').item.json.generated_at }) }}",
+        "options": { "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "application/json" }] } }
+      },
+      "id": "e5f6a7b8-0005-0005-0005-000000000007",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1520, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Build Prompt", "type": "main", "index": 0 }]] },
+    "Build Prompt": { "main": [[{ "node": "Claude", "type": "main", "index": 0 }]] },
+    "Claude": { "main": [[{ "node": "Parse Response", "type": "main", "index": 0 }]] },
+    "Parse Response": { "main": [[{ "node": "Create Notion page", "type": "main", "index": 0 }]] },
+    "Create Notion page": { "main": [[{ "node": "Append content blocks", "type": "main", "index": 0 }]] },
+    "Append content blocks": { "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": true },
+  "tags": []
+}

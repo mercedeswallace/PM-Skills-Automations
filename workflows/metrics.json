@@ -1,0 +1,125 @@
+{
+  "name": "PM Skills — Metrics",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pm-metrics",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "f6a7b8c9-0006-0006-0006-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "pm-metrics"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body;\nconst skill = body.skill;\nconst inputs = body.inputs || {};\n\nconst skills = {\n\n  'north-star': {\n    system: `You are an expert in product strategy and metrics. Help teams identify and validate their North Star metric — the single metric that best captures the value delivered to customers and predicts long-term business success. Use input/output metric thinking. Output in clean markdown.`,\n    user: `Find and validate the North Star metric:\n\nProduct: ${inputs.product || ''}\nCustomer value delivered: ${inputs.customer_value || ''}\nBusiness model: ${inputs.business_model || ''}\nCurrent metrics tracked: ${inputs.current_metrics || ''}\nStage: ${inputs.stage || ''}\n\nOutput: North Star metric recommendation with rationale, 3-5 input metrics that drive it, metrics to avoid (vanity metrics), measurement plan, and how to use this in weekly team reviews.`\n  },\n\n  'metric-framework': {\n    system: `You are an expert in product metrics and analytics. Build comprehensive metrics frameworks using AARRR (pirate metrics) or input/output methodology. Every metric should be measurable, actionable, and owned by someone. Output in clean markdown with structured tables.`,\n    user: `Build a metrics framework:\n\nProduct: ${inputs.product || ''}\nBusiness model: ${inputs.business_model || ''}\nStage: ${inputs.stage || ''}\nTeam structure: ${inputs.team_structure || ''}\nCurrent data available: ${inputs.data_available || 'not specified'}\nFramework preference: ${inputs.framework || 'AARRR'}\n\nOutput: complete metrics framework with metric name, definition, formula, target, measurement frequency, and owner for each layer, plus leading vs lagging indicator breakdown, and instrumentation checklist.`\n  },\n\n  'dashboard-design': {\n    system: `You are an expert in data visualization and product analytics. Design metrics dashboards with the right metrics for the right audience. Different audiences need different views — executives, PMs, and engineers all need different dashboards. Output in clean markdown with layout descriptions.`,\n    user: `Design a metrics dashboard:\n\nProduct: ${inputs.product || ''}\nPrimary audience: ${inputs.audience || ''}\nKey decisions this dashboard should enable: ${inputs.decisions || ''}\nAvailable data sources: ${inputs.data_sources || ''}\nUpdate frequency: ${inputs.frequency || 'daily'}\nTool to be used: ${inputs.tool || 'not specified'}\n\nOutput: dashboard purpose statement, recommended metrics per section with definitions, layout design (described in text), alert thresholds to configure, and what to do when each metric moves in the wrong direction.`\n  },\n\n  'team-health': {\n    system: `You are an expert in team dynamics and engineering effectiveness. Run structured team health checks that surface what's actually working and what isn't — not just what people are comfortable saying in public. Output in clean markdown with facilitation guide.`,\n    user: `Run a team health check:\n\nTeam: ${inputs.team || ''}\nTeam size: ${inputs.size || ''}\nRecent context: ${inputs.context || ''}\nAreas of concern: ${inputs.concerns || 'none specified'}\nLast health check: ${inputs.last_check || 'never'}\n\nOutput: health check survey questions (anonymous), facilitation guide for the team discussion, scoring rubric (traffic light per dimension), action planning template, and follow-up schedule.`\n  },\n\n  'meeting-notes': {\n    system: `You are an expert at turning raw meeting notes into structured, actionable outputs. Extract decisions, action items, open questions, and key discussion points. Be ruthless about what matters vs what was just conversation. Output in clean markdown.`,\n    user: `Process these meeting notes:\n\nMeeting type: ${inputs.meeting_type || ''}\nAttendees: ${inputs.attendees || ''}\nRaw notes: ${inputs.notes || ''}\nDate: ${inputs.date || new Date().toISOString().split('T')[0]}\n\nOutput: meeting summary (3 sentences max), decisions made (with rationale), action items (owner, task, due date), open questions (with suggested owner), and key context for anyone who missed it.`\n  }\n\n};\n\nconst skill_config = skills[skill];\nif (!skill_config) {\n  throw new Error(`Unknown skill: \"${skill}\". Valid options: ${Object.keys(skills).join(', ')}`);\n}\n\nreturn {\n  skill: skill,\n  system_prompt: skill_config.system,\n  user_message: skill_config.user\n};"
+      },
+      "id": "f6a7b8c9-0006-0006-0006-000000000002",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({\"model\":\"claude-sonnet-4-6\",\"max_tokens\":8192,\"system\":$json.system_prompt,\"messages\":[{\"role\":\"user\",\"content\":$json.user_message}]}) }}",
+        "options": {}
+      },
+      "id": "f6a7b8c9-0006-0006-0006-000000000003",
+      "name": "Claude",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300],
+      "credentials": { "httpHeaderAuth": { "id": "YOUR_ANTHROPIC_CREDENTIAL_ID", "name": "Header Auth account" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.item.json;\nconst content = raw.content && raw.content[0] ? raw.content[0].text : '';\nconst skill = $('Build Prompt').item.json.skill;\nreturn {\n  skill: skill,\n  content: content,\n  word_count: content.split(/\\s+/).filter(w => w).length,\n  generated_at: new Date().toISOString()\n};"
+      },
+      "id": "f6a7b8c9-0006-0006-0006-000000000004",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": { "__rl": true, "mode": "id", "value": "YOUR_NOTION_PM_SKILLS_DB_ID" },
+        "title": "={{ $json.skill + ' — ' + $now.toFormat('yyyy-MM-dd') }}",
+        "propertiesUi": { "propertyValues": [] },
+        "options": {}
+      },
+      "id": "f6a7b8c9-0006-0006-0006-000000000005",
+      "name": "Create Notion page",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [1080, 300],
+      "credentials": { "notionApi": { "id": "YOUR_NOTION_CREDENTIAL_ID", "name": "Notion account" } }
+    },
+    {
+      "parameters": {
+        "resource": "block",
+        "blockId": { "__rl": true, "value": "={{ $('Create Notion page').item.json.id }}", "mode": "id" },
+        "blockUi": {
+          "blockValues": [
+            { "textContent": "={{ $('Parse Response').item.json.content.substring(0, 2000) }}" },
+            { "textContent": "={{ $('Parse Response').item.json.content.length > 2000 ? $('Parse Response').item.json.content.substring(2000, 4000) : ' ' }}" },
+            { "textContent": "={{ $('Parse Response').item.json.content.length > 4000 ? $('Parse Response').item.json.content.substring(4000, 6000) : ' ' }}" },
+            { "textContent": "={{ $('Parse Response').item.json.content.length > 6000 ? $('Parse Response').item.json.content.substring(6000, 8000) : ' ' }}" }
+          ]
+        }
+      },
+      "id": "f6a7b8c9-0006-0006-0006-000000000006",
+      "name": "Append content blocks",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [1300, 300],
+      "credentials": { "notionApi": { "id": "YOUR_NOTION_CREDENTIAL_ID", "name": "Notion account" } }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'done', skill: $('Parse Response').item.json.skill, notion_url: $('Create Notion page').item.json.url, word_count: $('Parse Response').item.json.word_count, generated_at: $('Parse Response').item.json.generated_at }) }}",
+        "options": { "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "application/json" }] } }
+      },
+      "id": "f6a7b8c9-0006-0006-0006-000000000007",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1520, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Build Prompt", "type": "main", "index": 0 }]] },
+    "Build Prompt": { "main": [[{ "node": "Claude", "type": "main", "index": 0 }]] },
+    "Claude": { "main": [[{ "node": "Parse Response", "type": "main", "index": 0 }]] },
+    "Parse Response": { "main": [[{ "node": "Create Notion page", "type": "main", "index": 0 }]] },
+    "Create Notion page": { "main": [[{ "node": "Append content blocks", "type": "main", "index": 0 }]] },
+    "Append content blocks": { "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": true },
+  "tags": []
+}

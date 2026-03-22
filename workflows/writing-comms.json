@@ -1,0 +1,125 @@
+{
+  "name": "PM Skills — Writing & Comms",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pm-writing",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "d4e5f6a7-0004-0004-0004-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "pm-writing"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body;\nconst skill = body.skill;\nconst inputs = body.inputs || {};\n\nconst skills = {\n\n  'board-deck': {\n    system: `You are an expert at board-level communication. Write board decks with a clear narrative arc — situation, progress, challenges, asks. Boards want to know: are you in control, do you know what's working and what isn't, and what do you need from them. Be direct, use data, and never bury the lede. Output in clean markdown.`,\n    user: `Create a board meeting presentation:\n\nCompany: ${inputs.company || ''}\nMeeting date/quarter: ${inputs.quarter || ''}\nKey metrics this period: ${inputs.metrics || ''}\nHighlights (what went well): ${inputs.highlights || ''}\nChallenges (what didn't): ${inputs.challenges || ''}\nStrategic updates: ${inputs.strategy || ''}\nAsks from the board: ${inputs.asks || 'none'}\nNext period outlook: ${inputs.outlook || ''}\n\nOutput: slide-by-slide outline with speaker notes, narrative arc, key data callouts, and recommended visualizations (described in text).`\n  },\n\n  'customer-announcement': {\n    system: `You are an expert in product marketing and customer communications. Write announcements that lead with customer benefit, not feature names. Adapt tone and length for each channel. Output in clean markdown with clearly labeled sections per channel.`,\n    user: `Write customer announcements for this launch:\n\nWhat's launching: ${inputs.launch || ''}\nKey customer benefit: ${inputs.benefit || ''}\nWho it's for: ${inputs.audience || 'all customers'}\nLaunch date: ${inputs.launch_date || ''}\nTone: ${inputs.tone || 'professional and warm'}\nChannels needed: ${inputs.channels || 'email, in-app, social'}\n\nOutput: one version per channel (email subject + body, in-app message, social post), each optimized for that channel's format and length.`\n  },\n\n  'technical-spec': {\n    system: `You are an expert technical product manager. Write technical specifications that give engineers everything they need to build without ambiguity. Include architecture decisions, data models, API designs, edge cases, and open questions. Output in clean markdown.`,\n    user: `Write a technical specification:\n\nFeature/system: ${inputs.feature || ''}\nProblem being solved: ${inputs.problem || ''}\nProposed solution: ${inputs.solution || ''}\nTech stack: ${inputs.tech_stack || ''}\nConstraints: ${inputs.constraints || ''}\nOut of scope: ${inputs.out_of_scope || ''}\n\nOutput: overview, goals and non-goals, proposed architecture, data models, API design (endpoints, request/response), edge cases and error handling, open questions, and implementation notes.`\n  },\n\n  'decision-doc': {\n    system: `You are an expert at structured decision-making. Write decision documents using the DACI framework (Driver, Approver, Contributor, Informed) with clear options analysis and a defensible recommendation. Never recommend without showing your reasoning. Output in clean markdown.`,\n    user: `Write a decision document:\n\nDecision to make: ${inputs.decision || ''}\nContext and background: ${inputs.context || ''}\nOptions being considered: ${inputs.options || ''}\nKey constraints: ${inputs.constraints || ''}\nStakeholders: ${inputs.stakeholders || ''}\nDeadline for decision: ${inputs.deadline || ''}\n\nOutput: decision statement, context, DACI, options analysis (pros/cons/risks per option), recommendation with rationale, implementation plan, and open questions.`\n  },\n\n  'exec-update': {\n    system: `You are an expert at executive communication. Write crisp executive updates using the SCQA framework (Situation, Complication, Question, Answer). Executives want the bottom line first, then supporting evidence. Cut everything that doesn't serve the narrative. Output in clean markdown.`,\n    user: `Create an executive update:\n\nTopic: ${inputs.topic || ''}\nAudience: ${inputs.audience || 'leadership team'}\nSituation (current state): ${inputs.situation || ''}\nComplication (what changed or is at risk): ${inputs.complication || ''}\nKey data points: ${inputs.data || ''}\nRecommended action or ask: ${inputs.ask || ''}\n\nOutput: SCQA-structured update (max 1 page equivalent), key metrics callout box, recommended next steps, and an optional appendix outline for supporting details.`\n  },\n\n  'api-docs': {\n    system: `You are an expert technical writer specializing in API documentation. Write clear, complete API docs with authentication, all endpoints, request/response examples, error codes, and rate limits. Use realistic example values. Output in clean markdown.`,\n    user: `Write API documentation:\n\nAPI name: ${inputs.api_name || ''}\nPurpose: ${inputs.purpose || ''}\nAuthentication method: ${inputs.auth || ''}\nEndpoints to document: ${inputs.endpoints || ''}\nBase URL: ${inputs.base_url || ''}\nAudience: ${inputs.audience || 'external developers'}\n\nOutput: overview, authentication guide, endpoint reference (method, path, description, parameters, request body, response, errors, example), rate limits, and error code reference table.`\n  },\n\n  'sales-enablement': {\n    system: `You are an expert in product marketing and sales enablement. Create complete sales enablement packages that give reps everything they need to sell confidently — positioning, objection handling, competitive comparisons, and talk tracks. Output in clean markdown.`,\n    user: `Create a sales enablement kit:\n\nProduct/feature: ${inputs.product || ''}\nTarget buyer: ${inputs.buyer || ''}\nKey differentiators: ${inputs.differentiators || ''}\nMain competitors: ${inputs.competitors || ''}\nCommon objections: ${inputs.objections || ''}\nIdeal customer profile: ${inputs.icp || ''}\n\nOutput: one-pager summary, elevator pitch (30 sec), discovery questions, full talk track, objection handling guide (objection + response for each), competitive battle card, and qualification checklist.`\n  }\n\n};\n\nconst skill_config = skills[skill];\nif (!skill_config) {\n  throw new Error(`Unknown skill: \"${skill}\". Valid options: ${Object.keys(skills).join(', ')}`);\n}\n\nreturn {\n  skill: skill,\n  system_prompt: skill_config.system,\n  user_message: skill_config.user\n};"
+      },
+      "id": "d4e5f6a7-0004-0004-0004-000000000002",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({\"model\":\"claude-sonnet-4-6\",\"max_tokens\":8192,\"system\":$json.system_prompt,\"messages\":[{\"role\":\"user\",\"content\":$json.user_message}]}) }}",
+        "options": {}
+      },
+      "id": "d4e5f6a7-0004-0004-0004-000000000003",
+      "name": "Claude",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300],
+      "credentials": { "httpHeaderAuth": { "id": "YOUR_ANTHROPIC_CREDENTIAL_ID", "name": "Header Auth account" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.item.json;\nconst content = raw.content && raw.content[0] ? raw.content[0].text : '';\nconst skill = $('Build Prompt').item.json.skill;\nreturn {\n  skill: skill,\n  content: content,\n  word_count: content.split(/\\s+/).filter(w => w).length,\n  generated_at: new Date().toISOString()\n};"
+      },
+      "id": "d4e5f6a7-0004-0004-0004-000000000004",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": { "__rl": true, "mode": "id", "value": "YOUR_NOTION_PM_SKILLS_DB_ID" },
+        "title": "={{ $json.skill + ' — ' + $now.toFormat('yyyy-MM-dd') }}",
+        "propertiesUi": { "propertyValues": [] },
+        "options": {}
+      },
+      "id": "d4e5f6a7-0004-0004-0004-000000000005",
+      "name": "Create Notion page",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [1080, 300],
+      "credentials": { "notionApi": { "id": "YOUR_NOTION_CREDENTIAL_ID", "name": "Notion account" } }
+    },
+    {
+      "parameters": {
+        "resource": "block",
+        "blockId": { "__rl": true, "value": "={{ $('Create Notion page').item.json.id }}", "mode": "id" },
+        "blockUi": {
+          "blockValues": [
+            { "textContent": "={{ $('Parse Response').item.json.content.substring(0, 2000) }}" },
+            { "textContent": "={{ $('Parse Response').item.json.content.length > 2000 ? $('Parse Response').item.json.content.substring(2000, 4000) : ' ' }}" },
+            { "textContent": "={{ $('Parse Response').item.json.content.length > 4000 ? $('Parse Response').item.json.content.substring(4000, 6000) : ' ' }}" },
+            { "textContent": "={{ $('Parse Response').item.json.content.length > 6000 ? $('Parse Response').item.json.content.substring(6000, 8000) : ' ' }}" }
+          ]
+        }
+      },
+      "id": "d4e5f6a7-0004-0004-0004-000000000006",
+      "name": "Append content blocks",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [1300, 300],
+      "credentials": { "notionApi": { "id": "YOUR_NOTION_CREDENTIAL_ID", "name": "Notion account" } }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'done', skill: $('Parse Response').item.json.skill, notion_url: $('Create Notion page').item.json.url, word_count: $('Parse Response').item.json.word_count, generated_at: $('Parse Response').item.json.generated_at }) }}",
+        "options": { "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "application/json" }] } }
+      },
+      "id": "d4e5f6a7-0004-0004-0004-000000000007",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1520, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Build Prompt", "type": "main", "index": 0 }]] },
+    "Build Prompt": { "main": [[{ "node": "Claude", "type": "main", "index": 0 }]] },
+    "Claude": { "main": [[{ "node": "Parse Response", "type": "main", "index": 0 }]] },
+    "Parse Response": { "main": [[{ "node": "Create Notion page", "type": "main", "index": 0 }]] },
+    "Create Notion page": { "main": [[{ "node": "Append content blocks", "type": "main", "index": 0 }]] },
+    "Append content blocks": { "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": true },
+  "tags": []
+}
